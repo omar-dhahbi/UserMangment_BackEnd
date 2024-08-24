@@ -13,12 +13,10 @@ return new class extends Migration
     {
         Schema::create('reunions', function (Blueprint $table) {
             $table->id();
-            $table->text('Message');
-            $table->unsignedBigInteger('departement_id');
-            $table->foreign('departement_id')->references('id')->on('departements')->onDelete('cascade')->onUpdate('cascade');
-           $table->date('DateMessageEnvoye');
-           $table->softDeletes();
-            $table->timestamps(); // toksed fl table nn reunion
+            $table->text('title');
+            $table->text('DescriptionReunion');
+            $table->date('date');
+            $table->timestamps();
         });
     }
 

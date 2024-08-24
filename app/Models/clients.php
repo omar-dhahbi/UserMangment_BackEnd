@@ -5,16 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\projets;
-class clients extends Model
 
+class clients extends Model
 {
     use HasFactory;
     protected $table = "clients";
-    protected $fillable = ['RaisonSociale','photo','Telephone','Site','Email','created_at'];
-    protected $hidden = ['updated_at'];
-    protected $dates = ['deleted_at'];
-    public function projets()
+    protected $fillable = ['RaisonSociale', 'photo', 'Telephone', 'Site', 'email'];
+    protected $hidden = ['created_at', 'updated_at'];
+    public function projet()
     {
-        return $this->hasMany(projets::class);
+        $this->hasMany(projets::class);
     }
 }

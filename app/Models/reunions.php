@@ -1,19 +1,23 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\departements;
+use App\Models\reunionDepartemen;
+
+
 class reunions extends Model
 {
-    use SoftDeletes;
-    protected $table = "reunions";
-    protected $fillable=['Message','departement_id','DateMessageEnvoye','created_at'];
+    use HasFactory;
+    protected $table = 'reunions';
+    protected $fillable = ['Message', 'DescriptionReunion', 'DateMessageEnvoye', 'created_at'];
     protected $hidden = ['updated_at'];
     protected $dates = ['deleted_at'];
-    public function departements()
+   
+    public function departement()
     {
-       return $this->belongsTo(departements::class);
+        return $this->hasManyThrough(departements::class, reunionDepartemen::class);
     }
 }

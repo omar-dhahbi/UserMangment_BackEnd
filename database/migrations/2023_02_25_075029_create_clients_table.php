@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('RaisonSociale');
             $table->string('photo');
-            $table->integer('Telephone');
+            $table->string('Telephone');
             $table->string('Site');
-            $table->string('Email');
+            $table->string('email')->unique();
             $table->timestamps();
         });
     }

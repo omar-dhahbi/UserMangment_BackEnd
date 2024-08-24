@@ -4,82 +4,147 @@ namespace App\Http\Controllers;
 
 use App\Models\departements;
 use Illuminate\Http\Request;
+use App\Models\reunionDepartemen;
+
 use App\Models\reunions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class reunionController extends Controller
 {
-    public function index()
-    {
-        $reunions = DB::table('reunions')
-            ->join('departements', 'reunions.departement_id', '=', 'departements.id')
-            ->select('reunions.*', 'departements.Titre')
-            ->get();
-        return response()->json($reunions);
-    }
-    public function getsReunionById($id)
-    {
-        $reunions = reunions::find($id);
-        if (is_null($reunions)) {
-            return response()->json(['message' => 'reunions Not Found.'], 404);
-        }
-        return response()->json(reunions::find($id));
-    }
-    public function getIdDepartmentByName($name){
-        $departements = departements::where('Titre',$name)->first();
-        if($departements){
-            return $departements->id;
-        }
-        return null;
-    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'Message' => 'required',
-            'departement_id' => 'required',
-            'DateMessageEnvoye' => 'required|date',
+            'title' => 'required',
+            // 'departements' => 'required|array',
+            'DescriptionReunion' => 'required|min:12',
+            'date' => 'required|date',
         ]);
         if ($validator->fails()) {
-            $arr = array('status' => 'false', 'message' => $validator->errors()->all());
+            return response()->json([
+                'error' => $validator->errors()
+            ], 401);
         } else {
             $obj = new reunions();
-            $obj->Message = $request->Message;
-            $obj->departement_id = $this->getIdDepartmentByName($request->departement_id);
-            $obj->DateMessageEnvoye = $request->DateMessageEnvoye;
+            $obj->title = $request->title;
+            $obj->DescriptionReunion = $request->DescriptionReunion;
+            $obj->date = $request->date;
             $obj->save();
-            $arr = array('status' => true, 'message' => ' Query Successfully Send');
+            foreach ($request->departement_id as $departement) {
+                $obj2 = new reunionDepartemen();
+                $obj2->reunion_id = $obj->id;
+                $obj2->departement_id = $departement;
+                $obj2->save();
+            }
+            return response()->json(['message' => ' Query Successfully Send']);
         }
-        echo json_encode($arr);
     }
     public function update(Request $request, $id)
     {
-        $reunions = reunions::find($id);
-        if (is_null($reunions)) {
-            return response()->json(['message' => 'reunions not found']);
+        $validator = Validator::make($request->all(), [
+            'title' => 'required',
+            'departements' => 'required|array',
+            'DescriptionReunion' => 'required|min:12',
+            'date' => 'required|date',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => $validator->errors()
+            ], 401);
+        } else {
+            $obj = reunions::find($id);
+            $obj->title = $request->title;
+            $obj->DescriptionReunion = $request->DescriptionReunion;
+            $obj->date = $request->date;
+            $obj->save();
+            $record = DB::table('reunion_departemens')
+                ->select('id')
+                ->where('reunion_id', $id);
+            DB::table('reunion_departemens')
+                ->whereIn('id', $record)
+                ->delete();
+
+            foreach ($request->departements as $departement) {
+                $obj2 = new reunionDepartemen();
+                $obj2->reunion_id = $obj->id;
+                $obj2->departement_id = $departement;
+                $obj2->save();
+            }
+            return response()->json(['message' => ' Query Successfully Send']);
         }
-        $reunions->update($request->all());
-        return response($reunions);
     }
+
+    public function getDataByInd($id)
+    {
+        $reunions = DB::table('reunions')
+            ->join('reunion_departemens', 'reunions.id', '=', 'reunion_departemens.reunion_id')
+            ->join('departements', 'departements.id', '=', 'reunion_departemens.departement_id')
+            ->select('reunions.id', 'reunions.title', 'reunions.DescriptionReunion', 'reunions.date', 'departements.id as departements')
+            ->where('reunions.id', $id)
+            ->orderBy('reunions.id')
+            ->get();
+
+        $currentReunion = null;
+
+        foreach ($reunions as $reunion) {
+            if ($currentReunion === null || $currentReunion->id !== $reunion->id) {
+                $currentReunion = (object)[
+                    "id" => $reunion->id,
+                    "title" => $reunion->title,
+                    "DescriptionReunion" => $reunion->DescriptionReunion,
+                    "date" => $reunion->date,
+                    "departements" => [$reunion->departements],
+                ];
+            } else {
+                $currentReunion->departements[] = $reunion->departements;
+            }
+        }
+
+        return $currentReunion;
+    }
+
+
     public function destroy($id)
     {
-        $reunions = reunions::find($id);
-        if (is_null($reunions)) {
-            return response()->json(['message' => 'reunions not found']);
+        $reunion = reunions::find($id);
+
+        if (is_null($reunion)) {
+            return response()->json(['error' => 'Reunion not found'], 404);
         }
-        $reunions->delete();
-        return response()->json(['message' => 'reunions deleted']);
+
+        ReunionDepartemen::where('reunion_id', $id)->delete();
+        $reunion->delete();
+
+        return response()->json(['message' => 'Reunion supprimer successfully']);
     }
-    public function trashed()
+      public function getDataById($id)
     {
-        $reunions = reunions::onlyTrashed()->get();
-        return response()->json($reunions);
-    }
-    public function restore($id)
-    {
-        $reunions = reunions::withTrashed()->where('id', $id)->first();
-        $reunions->restore();
-        return response()->json(['message' => 'reunions restored']);
+        $reunions = DB::table('reunions')
+            ->join('reunion_departemens', 'reunions.id', '=', 'reunion_departemens.reunion_id')
+            ->join('departements', 'departements.id', '=', 'reunion_departemens.departement_id')
+            ->select('reunions.id', 'reunions.title', 'reunions.DescriptionReunion', 'reunions.date', 'departements.Titre as departements')
+            ->where('reunions.id', $id)
+            ->orderBy('reunions.id')
+            ->get();
+
+        $currentReunion = null;
+
+        foreach ($reunions as $reunion) {
+            if ($currentReunion === null || $currentReunion->id !== $reunion->id) {
+                $currentReunion = (object)[
+                    "id" => $reunion->id,
+                    "title" => $reunion->title,
+                    "DescriptionReunion" => $reunion->DescriptionReunion,
+                    "date" => $reunion->date,
+                    "departements" => [$reunion->departements],
+                ];
+            } else {
+                $currentReunion->departements[] = $reunion->departements;
+            }
+        }
+
+        return $currentReunion;
     }
 
 }

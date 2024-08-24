@@ -17,18 +17,20 @@ class departementsController extends Controller
     {
         $departements = departements::find($id);
         if (is_null($departements)) {
-            return response()->json(['message' => 'Departement Not Found.'], 404);
+            return response()->json(['error' => 'Departement Not Found.'], 404);
         }
         return response()->json(departements::find($id));
     }
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'Titre' => 'required|unique:departements',// choftha
-            'Description' => 'required',
+            'Titre' => 'required|unique:departements|min:6|string',
+            'Description' => 'required|min:12',
         ]);
         if ($validator->fails()) {
-            return response()->json(['message' => 'Departements exist , try another one'], 404);
+            return response()->json([
+                'error' => $validator->errors()
+            ], 401);
         } else {
             $obj = new departements();
             $obj->Titre = $request->Titre;
@@ -64,9 +66,6 @@ class departementsController extends Controller
             ->orWhere('Description', 'like', "%$query%")
 
             ->get();
-
-
-
         return response()->json($departements);
     }
 }
